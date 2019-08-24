@@ -12,7 +12,9 @@ c.read()
 
 
 def sanitize_string(input_str):
-    return input_str.lower().replace(' ', '_').replace(':', '').replace('/','').replace('\\','').rstrip('.')
+    output_str = input_str.lower().replace(' ', '_').rstrip('.')
+    output_str = re.sub(r'[!@#$%^&*()\[\]{};:/<>?\\|`~\-=+\'\"]', '', output_str)
+    return output_str
 
 
 def do(site, download_dir=None):
