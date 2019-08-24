@@ -1,0 +1,7 @@
+{
+  "log_level": 10,
+  "test_mode": 0,
+  "limit_num_pages": -1,
+  "default_download_dir_name": "images",
+  "url_alphacoder": "http://wall.alphacoders.com/by_resolution.php?w=3840&h=2160"
+}
