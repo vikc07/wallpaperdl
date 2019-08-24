@@ -33,10 +33,32 @@ def do(site, download_dir=None):
 
     start_time = time.time()
 
-    stop = False
-    page_num = 1
+    # find total pages first
+    total_pages = 0
+    total_images = 0
 
-    while not stop:
+    url = c.url_alphacoder
+    r = requests.get(url)
+    if r.status_code == 200:
+        page_html = BeautifulSoup(r.text, features="html.parser")
+        pagination = page_html.find('ul', attrs={'class':re.compile('pagination')})
+        pagination = pagination.find_all('a', attrs={'href':re.compile('alphacoders')})
+        del pagination[-1]
+        total_pages = int(pagination.pop().string)
+
+        if c.limit_num_pages != -1:
+            total_pages = c.limit_num_pages
+            log.info('page limit set in config file')
+
+        # find number of thumbnails
+        total_images = len(page_html.find_all('div', attrs={'class': re.compile('thumb-container-big')})) * total_pages
+
+        log.info('total pages: {}'.format(total_pages))
+        log.info('total estimated number of images: {}'.format(total_images))
+
+    # let's rock n' roll
+    page_num = 1
+    while page_num <= total_pages:
         url = c.url_alphacoder
         if page_num > 1:
             url += '&page=' + str(page_num)
@@ -95,24 +117,38 @@ def do(site, download_dir=None):
                         log.info('local file {} exits, skipping'.format(local_file_path))
                         total_skipped += 1
 
-            # -1 means no limit
-            if c.limit_num_pages != -1:
-                if page_num == c.limit_num_pages:
-                    stop = True
+                    elapsed_time = time.time() - start_time
+
+                    files_remaining = total_images - total_downloaded - total_skipped
+
+                    if total_downloaded != 0:
+                        average_file_size = total_downloaded_size / total_downloaded
+                    else:
+                        average_file_size = 0
+
+                    download_rate_files = total_downloaded / elapsed_time
+                    download_rate_gb = total_downloaded_size / elapsed_time
+
+                    if download_rate_files != 0:
+                        time_remaining = files_remaining / download_rate_files
+                    else:
+                        time_remaining = 60 * 60 * 24 * 365
+
+                    size_remaining = average_file_size * files_remaining
+
+                    log.info('downloaded_count: {}'.format(total_downloaded))
+                    log.info('downloaded_size: {}'.format(formatting.fsize_pretty(total_downloaded_size)))
+                    log.info('skipped_count: {}'.format(total_skipped))
+                    log.info('runtime: {}'.format(formatting.time_pretty(elapsed_time)))
+                    log.info('download_rate: {}files/s {}/s'.format(round(download_rate_files, 2),
+                                                                    formatting.fsize_pretty(download_rate_gb)))
+                    log.info('est. number of files remaining: {}'.format(files_remaining))
+                    log.info('est. time remaining: {}'.format(formatting.time_pretty(time_remaining)))
+                    log.info('est. size remaining: {}'.format(formatting.fsize_pretty(size_remaining)))
+
             page_num += 1
-
         else:
-            stop = True
-
-    # your code
-    elapsed_time = time.time() - start_time
-
-    log.info('downloaded_count: {}'.format(total_downloaded))
-    log.info('downloaded_size: {}'.format(formatting.fsize_pretty(total_downloaded_size)))
-    log.info('skipped_count: {}'.format(total_skipped))
-    log.info('runtime: {}'.format(formatting.time_pretty(elapsed_time)))
-    log.info('download_rate: {}files/s {}/s'.format(round(total_downloaded/elapsed_time, 2), formatting.fsize_pretty(
-        total_downloaded_size/elapsed_time)))
+            log.error('error occurred connecting to url {}'.format(url))
 
     return err
 
